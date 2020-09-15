@@ -10,41 +10,79 @@ contract RandoChaosV1 is Migrations{
  	//Declaration of DAI and unity parameter
 	IERC20 dai;
 	uint256 unity = 10 ** 18;
+	uint256 maxId;
+	uint256 maxWinMult;
+	uint256[][] lastResult;
 	//Iniciation and fallback function
 	constructor(address _daiAddress) public{
 		dai = IERC20(_daiAddress);
+		maxId = 0;
+		maxWinMult = 5;
 	} 
 	function() external payable{}
-
+/*
 	//Mapping to show result, just keep address, anything else is stored
-	mapping (address => uint) lastResult1;
-	mapping (address => uint) lastResult2;
-	mapping (address => uint) lastResult3;
-	mapping (address => uint) lastResult4;
-	mapping (address => uint) lastResult5;
+	mapping (address => uint256) lastResult1;
+	mapping (address => uint256) lastResult2;
+	mapping (address => uint256) lastResult3;
+	mapping (address => uint256) lastResult4;
+	mapping (address => uint256) lastResult5;
+	mapping (address => uint256) lastResult6;
+	mapping (address => uint256) lastResult7;
+	mapping (address => uint256) lastResult8;
+	mapping (address => uint256) lastResult9;
+*/
+	//User help to do random number
+	mapping (address => uint256) userNum;
+	mapping (uint256 => address) userAddress;
+	
 
 	//Each of the following functions are used to acces to their personal result of each game
-	function getLastResult() external view returns(uint256 _lastResult1){
-		require (lastResult1[msg.sender] != 0, "No play, yet.");
-		return(lastResult1[msg.sender]);
+	function getLastResult(uint256 _game) external view returns(uint256 _lastResult){
+		return(lastResult[userNum[msg.sender]][_game]);
 	}
-	function getLastResult2() external view returns(uint256 _lastResult2){
-		require (lastResult2[msg.sender] != 0, "No play, yet.");
-		return(lastResult2[msg.sender]);
-	}
-	function getLastResult3() external view returns(uint256 _lastResult3){
-		require (lastResult3[msg.sender] != 0, "No play, yet.");
-		return(lastResult3[msg.sender]);
-	}
-	function getLastResult4() external view returns(uint256 _lastResult4){
-		require (lastResult4[msg.sender] != 0, "No play, yet.");
-		return(lastResult4[msg.sender]);
-	}
-	function getLastResult5() external view returns(uint256 _lastResult5){
-		require (lastResult5[msg.sender] != 0, "No play, yet.");
-		return(lastResult5[msg.sender]);
+
+	//% of crazy rulette
+	function checkPercent(uint256 _amount, uint256 _winMultiply) public view returns(uint256 _tantpercent){
+		uint256 x;
+		uint256 y;
+		uint256 auxf;
+		x = 100 * _amount;
+		y = _amount * _winMultiply;
+		auxf = y % 10;
+		auxf = (y - auxf) / 10;
+		y = y + auxf;
+		auxf = x % y;
+		x = (x - auxf) / y;
+		return x;
 	}
 	
+	//Random number
+	function addUser() public{
+		if(userNum[msg.sender] == 0){
+			userNum[msg.sender] = maxId;
+			userAddress[maxId] = msg.sender;
+			maxId++;
+		}
+	}
+	function random(uint256 _help) public returns(uint256 _result){
+		addUser();
+		uint256 x = uint256(keccak256(abi.encodePacked("chaos")));
+		uint256 blockHashNow = uint256(blockhash(block.number - 1));
+		x = (x % 100) * (uint256(now) % 100);
+		x = x % maxId;
+		x = uint256(userAddress[x]);
+		x = (blockHashNow % 1000) * (x % 1000);
+		x = (x % 1000) * (uint256(block.coinbase) % 1000);
+		if(_help == 1){
+			x = x % 10;
+		}
+		if(_help == 2){
+			x = x % 100;
+		}
+		return (x);
+	}
+
 	//Now comes Game functions, every name has a number asociated as seen before on getLastResult
 	//1 -> Rulette
 	//2 -> appleDrop
@@ -55,12 +93,10 @@ contract RandoChaosV1 is Migrations{
 	//Rulette function
 	function rulette() external{
 		require (dai.balanceOf(msg.sender) >= unity, "No enought DAI");
+		addUser();
 		//Creating a semi-random number
-		uint256 x = uint256(keccak256(abi.encodePacked("chaos")));
-		uint256 y ;
-		x = x % (10 ** 16);
-		x = x * uint256(now);
-		x = x % (10 ** 1);
+		uint256 x = random(1);
+		uint256 y = 0;
 		//Transfering 1 DAI to this contract as the payment
 		//Approve must go first
 		dai.transferFrom(msg.sender, address(this), unity);
@@ -100,12 +136,12 @@ contract RandoChaosV1 is Migrations{
 			dai.transferFrom(address(this), msg.sender, y); //Returns 0.8 Dai
 		}
 		if(x == 7){
-			y = 5 * (10 ** 17);
+			y = 2 * (10 ** 17);
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);//Returns 0.2 Dai
 		}
 		if(x == 8){
-			y = 6 * (10 ** 17);
+			y = 2 * (10 ** 18);
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);//Retorns 2 Dai
 		}
@@ -114,171 +150,120 @@ contract RandoChaosV1 is Migrations{
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);//Retorns 0.5 Dai
 		}
-		lastResult1[msg.sender] = y;
+		lastResult[userNum[msg.sender]][1] = y;
+		//Bonus point
+		lastResult[userNum[msg.sender]][0] += y;
 		//Thanks to join our game
 	}
-	//Apple Drop function
-	function appleDrop(uint256 _select, uint256 _amount) external{
+	//Function Random Bet x2
+	function randomBet2(uint256 _game, uint256 _select, uint256 _amount) external{
 		require(dai.balanceOf(msg.sender) >= _amount, "Not enought DAI");
 		require(_amount > 0 && _amount <= (5 * unity), "Not between 0 and 5 DAI");
 		//Approved first, we transfer the bet from msg.sender
 		dai.transferFrom(msg.sender, address(this), _amount);
 		//Creating a semi-random number between 1-9
-		uint256 x = 0;
-		uint256 y = 0;
-		x = uint256(keccak256(abi.encodePacked("appleDrop")));
-		x = x % (10 ** 16);
-		x = x * uint256(now);
-		x = x % (10 ** 1);
+		uint256 x = random(1);
+		uint256 y = 1;
 		if(x == 0){
-			x = _amount;
+			x = random(2);
+			x = (x - (x % 10)) / 10;
 		}
-		//Three possible answer, three If's. Allways return doble if correct.
-		//1 left || 2 center || 3 right
+		//Three possible answer. Allways return doble if correct.
 		if(1 <= x && x <= 3 && _select == 1){
 			y = _amount * 2;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult2[msg.sender] = y;
 		}
 		if(4 <= x && x <= 6 && _select == 2){
 			y = _amount * 2;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult2[msg.sender] = y;
 		}
 		if(7 <= x && x <= 9 && _select == 3){
 			y = _amount * 2;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult2[msg.sender] = y;
 		}
-		//If fail, lastResult2 = 1;
-		if(y == 0){
-			lastResult2[msg.sender] = 1;
-		}
+		lastResult[userNum[msg.sender]][_game] = y;
 		//Thanks to join our game
 	}
-	//Rape Game function
-	function rapeGame(uint256 _select, uint256 _amount) external{
+	//Function Random Bet x3
+	function randomBet3(uint256 _game, uint256 _select, uint256 _amount) external{
 		require(dai.balanceOf(msg.sender) >= _amount, "Not enought DAI");
 		require(_amount > 0 && _amount <= (5 * unity), "Not between 0 and 5 DAI");
 		//Approved first, we transfer the bet from msg.sender
 		dai.transferFrom(msg.sender, address(this), _amount);
-		//Creating a semi-random number between 0-9
-		uint256 x = 0;
-		uint256 y = 0;
-		x = uint256(keccak256(abi.encodePacked("rapeGame")));
-		x = x % (10 ** 16);
-		x = x * uint256(now);
-		x = x % (10 ** 1);
+		//Creating a semi-random number between 1-9
+		uint256 x = random(1);
+		uint256 y = 1;
 		//Five possible answer, five If's. Allways return per three if correct.
-		//A || B || C || D || E
 		if((0 == x || x == 1) && _select == 1){
 			y = _amount * 3;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult3[msg.sender] = y;
 		}
 		if((2 == x || x == 3) && _select == 2){
 			y = _amount * 3;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult3[msg.sender] = y;
 		}
 		if((4 == x || x == 5) && _select == 3){
 			y = _amount * 3;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult3[msg.sender] = y;
 		}
 		if((6 == x || x == 7) && _select == 4){
 			y = _amount * 3;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult3[msg.sender] = y;
 		}
 		if((8 == x || x == 9) && _select == 5){
 			y = _amount * 3;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult3[msg.sender] = y;
 		}
-		//If fail, lastResult3 = 1;
-		if(y == 0){
-			lastResult3[msg.sender] = 1;
-		}
+		lastResult[userNum[msg.sender]][_game] = y;
 		//Thanks to join our game
 	}
-	//Cock Fight function
-	function cockFight(uint256 _select, uint256 _amount) external{
+	//Function Random Bet x5
+	function randomBet5(uint256 _game, uint256 _select, uint256 _amount) external{
 		require(dai.balanceOf(msg.sender) >= _amount, "Not enought DAI");
 		require(_amount > 0 && _amount <= (5 * unity), "Not between 0 and 5 DAI");
 		//Approved first, we transfer the bet from msg.sender
 		dai.transferFrom(msg.sender, address(this), _amount);
 		//Creating a semi-random number between 1-9
-		uint256 x = 0;
-		uint256 y = 0;
-		x = uint256(keccak256(abi.encodePacked("cockFight")));
-		x = x % (10 ** 16);
-		x = x * uint256(now);
-		x = x % (10 ** 1);
-		if(x == 0){
-			x = _amount;
-		}
-		//Three possible answer, three If's. Allways return doble if correct.
-		//1 left || 2 center || 3 right
-		if(1 <= x && x <= 3 && _select == 1){
-			y = _amount * 2;
-			dai.approve(address(this), y);
-			dai.transferFrom(address(this), msg.sender, y);
-			lastResult4[msg.sender] = y;
-		}
-		if(4 <= x && x <= 6 && _select == 2){
-			y = _amount * 2;
-			dai.approve(address(this), y);
-			dai.transferFrom(address(this), msg.sender, y);
-			lastResult4[msg.sender] = y;
-		}
-		if(7 <= x && x <= 9 && _select == 3){
-			y = _amount * 2;
-			dai.approve(address(this), y);
-			dai.transferFrom(address(this), msg.sender, y);
-			lastResult4[msg.sender] = y;
-		}
-		//If fail, lastResult4 = 1;
-		if(y == 0){
-			lastResult4[msg.sender] = 1;
-		}
-		//Thanks to join our game
-	}
-	//Smurf Day function
-	function smurfDay(uint256 _select, uint256 _amount) external{
-		require(dai.balanceOf(msg.sender) >= _amount, "Not enought DAI");
-		require(_amount > 0 && _amount <= (5 * unity), "Not between 0 and 5 DAI");
-		//Approved first, we transfer the bet from msg.sender
-		dai.transferFrom(msg.sender, address(this), _amount);
-		//Creating a semi-random number between 0-9
-		uint256 x = 0;
-		uint256 y = 0;
-		x = uint256(keccak256(abi.encodePacked("smurfDay")));
-		x = x % (10 ** 16);
-		x = x * uint256(now);
-		x = x % (10 ** 1);
-		//One If all power, easy if semi-random number is the same as selected you win. Allways return per five if correct.
-		//0 || 1 || 2 || 3 || 4 || 5 || 6 || 7 || 8 || 9 
+		uint256 x = random(1);
+		uint256 y = 1;
+		//One If all power, easy if random number is the same as selected you win. Allways return per five if correct.
 		if(x == _select){
 			y = _amount * 5;
 			dai.approve(address(this), y);
 			dai.transferFrom(address(this), msg.sender, y);
-			lastResult5[msg.sender] = y;
 		}
-		//If fail, lastResult5 = 1;
-		if(y == 0){
-			lastResult5[msg.sender] = 1;
-		}
+		lastResult[userNum[msg.sender]][_game] = y;
 		//Thanks to join our game
 	}
+
+	//Crazy Rulette
+	function crazyRulette(uint256 _amount, uint256 _winMultiply, uint256 _game) external{
+		require(dai.balanceOf(msg.sender) >= _amount, "Not enought DAI");
+		require(_amount > 0 && _amount <= (5 * unity), "Not between 0 and 5 DAI");
+		require(_winMultiply <= maxWinMult, "Not allowed that multiplier");
+		//Approved first, we transfer the bet from msg.sender
+		dai.transferFrom(msg.sender, address(this), _amount);
+		uint256 x = random(2) * unity;
+		uint256 y = 1;
+		uint256 perCent = checkPercent(_amount, _winMultiply);
+		if(x <= perCent){
+			y = _amount * _winMultiply;
+			dai.approve(address(this), y);
+			dai.transferFrom(address(this), msg.sender, y);
+		}
+		lastResult[userNum[msg.sender]][_game] = y;
+		//Thanks to join our game
+	}
+	
+
 	//Set Up
 	//Take the benefits of the contract
 	function takeBenefits() external onlyOwner{
@@ -293,9 +278,17 @@ contract RandoChaosV1 is Migrations{
 		changeOwner(_newOwnerAddres);
 		//If I want to change my account I have this function on Migrations
 	}
+	function changeParams(uint256 _newMaxId, uint256 _newMaxWinMult) external onlyOwner{
+		maxId =  _newMaxId;
+		maxWinMult = _newMaxWinMult;
+	}
+	function getParams() external view onlyOwner returns(uint256 _maxId, uint256 _MaxWinMult){
+		return(maxId, maxWinMult);
+	}
+	
 
 //Thanks to check this out, it's important that we keep a basic understanding on those games we play and put money on it, for that Ethereum BlockChain is one of the best ways.
-//See you on other DAPP ;)
+//See you on other DAPP !
 }
 
 
