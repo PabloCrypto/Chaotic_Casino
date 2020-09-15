@@ -1,2 +1,2 @@
-# RandoChaos
-Dapp made of money games
+# ChaotiCasino
+Dapp made for fun
