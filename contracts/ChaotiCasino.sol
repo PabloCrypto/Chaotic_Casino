@@ -14,7 +14,6 @@ contract ChaotiCasino is Migrations{
 	uint8 maxWinMult;
 	uint256 maxAmount;
 	uint8 multiplyPerCent;
-	//Iniciation and fallback function
 	constructor(address _daiAddress) public{
 		dai = IERC20(_daiAddress);
 		unity = 10 ** 18;
@@ -37,7 +36,7 @@ contract ChaotiCasino is Migrations{
 		}
 		_; 
 	}
-	function random_rtq(uint256 _help) public view returns(uint256 _result){//Signature 0x00003147
+	function random_rtq(uint256 _help) internal addUser returns(uint256 _result){//Signature 0x00003147
 		uint256 x = uint256(keccak256(abi.encodePacked(now, msg.sender, block.number, "chaotic")));//Initial seed + time + caller address + block number
 		uint256 blockHashNow = uint256(blockhash(block.number - 1));//BlockHash
 		x = x % maxId;//Number must be bellow maxId obviously
@@ -52,7 +51,7 @@ contract ChaotiCasino is Migrations{
 		return (x);
 	}
 	//Rulette function
-	function roulette_Og2(uint256 _amount, uint256 _winMultiply) external addUser{//Signature 0x00001ced
+	function roulette_Og2(uint256 _amount, uint256 _winMultiply) external{//Signature 0x00001ced
 		require (dai.balanceOf(msg.sender) >= _amount && _amount >= unity, "No enought DAI");
 		uint x;
 		uint256 y = 0;
@@ -72,10 +71,8 @@ contract ChaotiCasino is Migrations{
 			}
 			lastResult[msg.sender] = y;
 			return;
-			//Thanks to join our game
 		}
 		//Else normal roulette
-		//Creating a semi-random number
 		x = random_rtq(1);
 		if(x == 0){
 			y = unity;
@@ -90,7 +87,6 @@ contract ChaotiCasino is Migrations{
 			dai.transferFrom(address(this), msg.sender, unity);//Retorns +1 => 2 DAI
 		}
 		lastResult[msg.sender] = y;
-		//Bonus point
 		bonusResult[msg.sender] += y;
 		return;
 		//Thanks to join our game
@@ -117,17 +113,13 @@ contract ChaotiCasino is Migrations{
 		return x;
 	}
 	//Set Up
-	//Take the benefits of the contract
 	function takeBenefits() external onlyOwner{
-		uint256 x = uint256(dai.balanceOf(address(this)));//Reads balance of the contract
+		uint256 x = uint256(dai.balanceOf(address(this)));
 		dai.approve(msg.sender, x);
 		dai.transferFrom(address(this), msg.sender, x);
-		//Then approve & transfer all money to my account jeje		
 	}
-	//Change owner
 	function newOwner(address _newOwnerAddres) external onlyOwner{
 		changeOwner(_newOwnerAddres);
-		//If I want to change my account I have this function on Migrations
 	}
 	function changeParams(uint256 _maxAmount, uint256 _newMaxId, uint8 _newMaxWinMult, uint8 _multiplyPerCent) external onlyOwner{
 		maxAmount = _maxAmount;

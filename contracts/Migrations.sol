@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 
 contract Migrations{
-  address public owner;
+  address private owner;
   uint public last_completed_migration;
 
   constructor() public {
