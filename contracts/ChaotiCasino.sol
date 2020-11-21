@@ -24,8 +24,8 @@ contract ChaotiCasino is Migrations{
 	} 
 	function() external payable{}
 	//User help to do random number
-	mapping (address => uint256) addressToId;
-	mapping (uint256 => address) idToAddress;
+	mapping (address => uint256) private addressToId;
+	mapping (uint256 => address) private idToAddress;
 	mapping (address => uint256) lastResult; //Last result of last bet
 	mapping (address => uint256) bonusResult; //Bonus winned by playing our rulettes
 	modifier addUser() { 
